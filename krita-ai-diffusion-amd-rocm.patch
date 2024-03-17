@@ -1,0 +1,23 @@
+diff -up ai_diffusion/server.py.omv~ ai_diffusion/server.py
+--- ai_diffusion/server.py.omv~	2024-03-13 00:37:58.311963289 +0100
++++ ai_diffusion/server.py	2024-03-13 00:41:11.181979072 +0100
+@@ -190,6 +190,8 @@ class Server:
+             torch_args += ["--index-url", "https://download.pytorch.org/whl/cpu"]
+         elif self.backend is ServerBackend.cuda:
+             torch_args += ["--index-url", "https://download.pytorch.org/whl/cu121"]
++        elif self.backend is ServerBackend.rocm:
++            torch_args += ["--pre", "--index-url", "https://download.pytorch.org/whl/nightly/rocm6.0"]
+         await _execute_process("PyTorch", self._pip_install(*torch_args), self.path, cb)
+ 
+         requirements_txt = temp_comfy_dir / "requirements.txt"
+diff -up ai_diffusion/settings.py.omv~ ai_diffusion/settings.py
+--- ai_diffusion/settings.py.omv~	2024-03-13 00:38:06.624049952 +0100
++++ ai_diffusion/settings.py	2024-03-13 00:39:29.788918149 +0100
+@@ -18,6 +18,7 @@ class ServerMode(Enum):
+ class ServerBackend(Enum):
+     cpu = ("Run on CPU", True)
+     cuda = ("Use CUDA (NVIDIA GPU)", not is_macos)
++    rocm = ("Use ROCm (AMD GPU)", not is_macos and not is_windows)
+     mps = ("Use MPS (Metal Performance Shader)", is_macos)
+     directml = ("Use DirectML (GPU)", is_windows)
+ 

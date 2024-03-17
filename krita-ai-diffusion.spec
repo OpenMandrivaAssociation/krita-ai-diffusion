@@ -1,6 +1,6 @@
 Name:		krita-ai-diffusion
 Version:	1.15.0
-Release:	1
+Release:	2
 Source0:	https://github.com/Acly/krita-ai-diffusion/releases/download/v%{version}/krita_ai_diffusion-%{version}.zip
 Patch0:		krita-ai-diffusion-amd-rocm.patch
 Summary:	AI image generation plugin for Krita
@@ -11,6 +11,7 @@ BuildArch:	noarch
 Requires:	(krita >= 5.2.0 with krita < 6.0.0)
 Supplements:	(krita >= 5.2.0 with krita < 6.0.0)
 Requires:	python-qt5-network
+Requires:	python-ensurepip
 
 %description
 Generate images from within Krita with minimal fuss: Select an

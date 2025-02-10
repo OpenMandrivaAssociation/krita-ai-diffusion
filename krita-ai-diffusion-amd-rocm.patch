@@ -1,27 +1,27 @@
 diff -up ai_diffusion/server.py.1~ ai_diffusion/server.py
---- ai_diffusion/server.py.1~	2024-12-08 16:51:18.705776143 +0100
-+++ ai_diffusion/server.py	2024-12-08 17:03:13.690747334 +0100
-@@ -186,11 +186,16 @@ class Server:
+--- ai_diffusion/server.py.1~	2025-02-10 15:35:19.079144152 +0100
++++ ai_diffusion/server.py	2025-02-10 15:43:31.696371281 +0100
+@@ -204,11 +204,16 @@ class Server:
          await _extract_archive("ComfyUI", archive_path, comfy_dir.parent, cb)
          temp_comfy_dir = comfy_dir.parent / f"ComfyUI-{resources.comfy_version}"
  
--        torch_args = ["torch~=2.4.1", "torchvision~=0.19.1", "torchaudio~=2.4.1"]
+-        torch_args = ["torch~=2.5.1", "torchvision~=0.20.1", "torchaudio~=2.5.1"]
 +        if self.backend is ServerBackend.rocm:
-+            torch_args = ["torch~=2.4.1+rocm6.0", "torchvision~=0.19.1+rocm6.0", "torchaudio~=2.4.1+rocm6.0"]
++            torch_args = ["torch~=2.5.1+rocm6.2", "torchvision~=0.20.1+rocm6.2", "torchaudio~=2.5.1+rocm6.2"]
 +        else:
-+            torch_args = ["torch~=2.4.1", "torchvision~=0.19.1", "torchaudio~=2.4.1"]
++            torch_args = ["torch~=2.5.1", "torchvision~=0.20.1", "torchaudio~=2.5.1"]
          if self.backend is ServerBackend.cpu:
              torch_args += ["--index-url", "https://download.pytorch.org/whl/cpu"]
          elif self.backend is ServerBackend.cuda:
              torch_args += ["--index-url", "https://download.pytorch.org/whl/cu124"]
 +        elif self.backend is ServerBackend.rocm:
-+            torch_args += ["--index-url", "https://download.pytorch.org/whl/rocm6.0"]
++            torch_args += ["--index-url", "https://download.pytorch.org/whl/rocm6.2"]
          elif self.backend is ServerBackend.directml:
              torch_args = ["numpy<2", "torch-directml"]
          await _execute_process("PyTorch", self._pip_install(*torch_args), self.path, cb)
 diff -up ai_diffusion/settings.py.1~ ai_diffusion/settings.py
---- ai_diffusion/settings.py.1~	2024-12-08 16:51:18.705957405 +0100
-+++ ai_diffusion/settings.py	2024-12-08 17:03:41.548889123 +0100
+--- ai_diffusion/settings.py.1~	2025-01-31 12:35:04.000000000 +0100
++++ ai_diffusion/settings.py	2025-02-10 15:35:19.079256595 +0100
 @@ -22,6 +22,7 @@ class ServerMode(Enum):
  class ServerBackend(Enum):
      cpu = (_("Run on CPU"), True)

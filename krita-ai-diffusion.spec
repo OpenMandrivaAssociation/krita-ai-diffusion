@@ -1,5 +1,5 @@
 Name:		krita-ai-diffusion
-Version:	1.29.0
+Version:	1.31.1
 Release:	1
 Source0:	https://github.com/Acly/krita-ai-diffusion/releases/download/v%{version}/krita_ai_diffusion-%{version}.zip
 Patch0:		krita-ai-diffusion-amd-rocm.patch

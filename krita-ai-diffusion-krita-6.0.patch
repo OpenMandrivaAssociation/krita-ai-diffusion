@@ -1,0 +1,345 @@
+diff -urN ai_diffusion.ORIG/extension.py ai_diffusion/extension.py
+--- ai_diffusion.ORIG/extension.py	2025-07-26 16:42:42.466617456 +0200
++++ ai_diffusion/extension.py	2025-07-26 16:43:46.367421430 +0200
+@@ -1,7 +1,7 @@
+ import sys
+ from pathlib import Path
+ from typing import Callable
+-from PyQt6.QtWidgets import QAction
++from PyQt6.QtGui import QAction
+ from krita import Extension, Krita, DockWidgetFactory, DockWidgetFactoryBase, Window  # type: ignore
+ 
+ from . import eventloop, __version__
+@@ -79,5 +79,5 @@
+ 
+ Krita.instance().addExtension(AIToolsExtension(Krita.instance()))
+ Krita.instance().addDockWidgetFactory(
+-    DockWidgetFactory("imageDiffusion", DockWidgetFactoryBase.DockRight, ImageDiffusionWidget)  # type: ignore
++    DockWidgetFactory("imageDiffusion", DockWidgetFactoryBase.DockPosition.DockRight, ImageDiffusionWidget)  # type: ignore
+ )
+diff -urN ai_diffusion.ORIG/network.py ai_diffusion/network.py
+--- ai_diffusion.ORIG/network.py	2025-07-26 16:42:42.469347547 +0200
++++ ai_diffusion/network.py	2025-07-26 16:43:46.372031940 +0200
+@@ -96,7 +96,7 @@
+         self._cleanup()
+ 
+         request = QNetworkRequest(QUrl(url))
+-        request.setAttribute(QNetworkRequest.FollowRedirectsAttribute, True)
++        request.setAttribute(QNetworkRequest.Attribute.RedirectPolicyAttribute, True)
+         request.setRawHeader(b"ngrok-skip-browser-warning", b"69420")
+         if bearer:
+             request.setRawHeader(b"Authorization", f"Bearer {bearer}".encode("utf-8"))
+@@ -146,7 +146,7 @@
+         assert isinstance(data, QByteArray)
+ 
+         request = QNetworkRequest(QUrl(url))
+-        request.setAttribute(QNetworkRequest.Attribute.FollowRedirectsAttribute, True)
++        request.setAttribute(QNetworkRequest.Attribute.RedirectPolicyAttribute, True)
+         if sha256:
+             request.setRawHeader(b"x-amz-checksum-sha256", sha256.encode("utf-8"))
+         request.setHeader(
+@@ -173,7 +173,7 @@
+     def download(self, url: str):
+         self._cleanup()
+         request = QNetworkRequest(QUrl(url))
+-        request.setAttribute(QNetworkRequest.Attribute.FollowRedirectsAttribute, True)
++        request.setAttribute(QNetworkRequest.Attribute.RedirectPolicyAttribute, True)
+         reply = self._net.get(request)
+         assert reply is not None, f"Network request for {url} failed: reply is None"
+ 
+@@ -274,13 +274,13 @@
+ 
+ async def _try_download(network: QNetworkAccessManager, url: str, path: Path):
+     out_file = QFile(str(path) + ".part")
+-    if not out_file.open(QFile.ReadWrite | QFile.Append):  # type: ignore
++    if not out_file.open(QFile.OpenModeFlag.ReadWrite | QFile.OpenModeFlag.Append):  # type: ignore
+         raise Exception(
+             _("Error during download: could not open {path} for writing", path=out_file.fileName())
+         )
+ 
+     request = QNetworkRequest(QUrl(_map_host(url)))
+-    request.setAttribute(QNetworkRequest.FollowRedirectsAttribute, True)
++    request.setAttribute(QNetworkRequest.Attribute.RedirectPolicyAttribute, True)
+     if out_file.size() > 0:
+         log.info(f"Found {path}.part, resuming download from {out_file.size()} bytes")
+         request.setRawHeader(b"Range", f"bytes={out_file.size()}-".encode("utf-8"))
+diff -urN ai_diffusion.ORIG/ui/animation.py ai_diffusion/ui/animation.py
+--- ai_diffusion.ORIG/ui/animation.py	2025-07-26 16:42:42.468179603 +0200
++++ ai_diffusion/ui/animation.py	2025-07-26 16:43:46.370105996 +0200
+@@ -102,12 +102,12 @@
+         self.target_layer = QComboBox(self)
+         self.target_layer.setMinimumContentsLength(20)
+         self.target_layer.setSizeAdjustPolicy(
+-            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLength
++            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+         )
+         layout.addWidget(self.target_layer)
+ 
+         self.preview_area = QLabel(self)
+-        self.preview_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
++        self.preview_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+         self.preview_area.setAlignment(
+             Qt.AlignmentFlag(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+         )
+diff -urN ai_diffusion.ORIG/ui/custom_workflow.py ai_diffusion/ui/custom_workflow.py
+--- ai_diffusion.ORIG/ui/custom_workflow.py	2025-07-26 16:42:42.467307107 +0200
++++ ai_diffusion/ui/custom_workflow.py	2025-07-26 16:43:46.368820560 +0200
+@@ -4,9 +4,9 @@
+ 
+ from krita import Krita
+ from PyQt6.QtCore import Qt, pyqtSignal, QMetaObject, QUuid, QUrl, QPoint, QSize
+-from PyQt6.QtGui import QFontMetrics, QIcon, QDesktopServices, QPalette
++from PyQt6.QtGui import QFontMetrics, QIcon, QDesktopServices, QPalette, QAction
+ from PyQt6.QtWidgets import QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QMenu
+-from PyQt6.QtWidgets import QLabel, QLineEdit, QListWidgetItem, QMessageBox, QSpinBox, QAction
++from PyQt6.QtWidgets import QLabel, QLineEdit, QListWidgetItem, QMessageBox, QSpinBox
+ from PyQt6.QtWidgets import QToolButton, QVBoxLayout, QWidget, QSlider, QDoubleSpinBox
+ from PyQt6.QtWidgets import QScrollArea, QTextEdit, QSplitter
+ 
+diff -urN ai_diffusion.ORIG/ui/generation.py ai_diffusion/ui/generation.py
+--- ai_diffusion.ORIG/ui/generation.py	2025-07-26 16:42:42.466914817 +0200
++++ ai_diffusion/ui/generation.py	2025-07-26 16:43:46.367969123 +0200
+@@ -4,8 +4,8 @@
+ from PyQt6.QtCore import Qt, QEvent, QMetaObject, QSize, QPoint, QTimer, QUuid, pyqtSignal
+ from PyQt6.QtCore import QItemSelectionModel
+ from PyQt6.QtGui import QGuiApplication, QMouseEvent, QKeyEvent, QKeySequence
+-from PyQt6.QtGui import QPalette, QColor, QIcon
+-from PyQt6.QtWidgets import QAction, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QProgressBar
++from PyQt6.QtGui import QPalette, QColor, QIcon, QAction
++from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QProgressBar
+ from PyQt6.QtWidgets import QListWidget, QListWidgetItem, QListView, QSizePolicy
+ from PyQt6.QtWidgets import QComboBox, QCheckBox, QMenu, QMessageBox, QToolButton
+ 
+@@ -54,13 +54,13 @@
+         self._model = root.active_model
+         self._connections = []
+ 
+-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+-        self.setResizeMode(QListView.Adjust)
++        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
++        self.setResizeMode(QListView.ResizeMode.Adjust)
+         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+-        self.setFlow(QListView.LeftToRight)
+-        self.setViewMode(QListWidget.IconMode)
++        self.setFlow(QListView.Flow.LeftToRight)
++        self.setViewMode(QListWidget.ViewMode.IconMode)
+         self.setIconSize(theme.screen_scale(self, QSize(self._thumb_size, self._thumb_size)))
+-        self.setFrameStyle(QListWidget.NoFrame)
++        self.setFrameStyle(QListWidget.Shape.NoFrame)
+         self.setStyleSheet(self._list_css)
+         self.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+         self.setDragEnabled(False)
+@@ -260,7 +260,7 @@ class HistoryWidget(QListWidget):
+             rect = self.visualItemRect(selected[0])
+             font = self._apply_button.fontMetrics()
+             context_visible = rect.width() >= 0.6 * self.iconSize().width()
+-            apply_text_visible = font.width(_("Apply")) < 0.35 * rect.width()
++            apply_text_visible = font.horizontalAdvance(_("Apply")) < 0.35 * rect.width()
+             apply_pos = QPoint(rect.left() + 3, rect.bottom() - self._apply_button.height() - 2)
+             if context_visible:
+                 cw = self._context_button.width()
+@@ -542,7 +542,7 @@
+         )
+         self.context_combo.setMinimumContentsLength(20)
+         self.context_combo.setSizeAdjustPolicy(
+-            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLength
++            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+         )
+         self.context_combo.currentIndexChanged.connect(self.set_context)
+ 
+diff -urN ai_diffusion.ORIG/ui/server.py ai_diffusion/ui/server.py
+--- ai_diffusion.ORIG/ui/server.py	2025-07-26 16:42:42.467427123 +0200
++++ ai_diffusion/ui/server.py	2025-07-26 16:43:46.369084187 +0200
+@@ -289,7 +289,7 @@
+ 
+         self._manage_button = QToolButton(self)
+         self._manage_button.setText(_("Manage"))
+-        self._manage_button.setPopupMode(QToolButton.InstantPopup)
++        self._manage_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+         self._manage_button.setMinimumWidth(150)
+ 
+         menu = QMenu(self)
+@@ -331,7 +331,7 @@
+         scroll = QScrollArea(self)
+         scroll.setWidget(package_list)
+         scroll.setWidgetResizable(True)
+-        scroll.setFrameStyle(QFrame.NoFrame)
++        scroll.setFrameStyle(QFrame.Shape.NoFrame)
+         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+         layout.addWidget(scroll, 1)
+ 
+diff -urN ai_diffusion.ORIG/ui/settings_widgets.py ai_diffusion/ui/settings_widgets.py
+--- ai_diffusion.ORIG/ui/settings_widgets.py	2025-07-26 16:42:42.467845553 +0200
++++ ai_diffusion/ui/settings_widgets.py	2025-07-26 16:43:46.369599610 +0200
+@@ -69,7 +69,7 @@
+         super().__init__(parent)
+ 
+         self._key_label = QLabel(f"<b>{setting.name}</b><br>{setting.desc}")
+-        self._key_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
++        self._key_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+ 
+         self._checkbox: QCheckBox | None = None
+         self._widget: QWidget | None = None
+@@ -441,7 +441,7 @@
+         scroll = QScrollArea(self)
+         scroll.setWidget(inner)
+         scroll.setWidgetResizable(True)
+-        scroll.setFrameStyle(QFrame.NoFrame)
++        scroll.setFrameStyle(QFrame.Shape.NoFrame)
+         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+         frame_layout.addWidget(scroll)
+ 
+diff -urN ai_diffusion.ORIG/ui/style.py ai_diffusion/ui/style.py
+--- ai_diffusion.ORIG/ui/style.py	2025-07-26 16:42:42.467037779 +0200
++++ ai_diffusion/ui/style.py	2025-07-26 16:43:46.368241688 +0200
+@@ -599,7 +599,7 @@
+         frame_layout.addLayout(builtin_layout)
+ 
+         frame = QFrame(self)
+-        frame.setFrameStyle(QFrame.StyledPanel)
++        frame.setFrameStyle(QFrame.Shape.StyledPanel)
+         frame.setLineWidth(1)
+         frame.setLayout(frame_layout)
+         self._layout.addWidget(frame)
+diff -urN ai_diffusion.ORIG/ui/switch.py ai_diffusion/ui/switch.py
+--- ai_diffusion.ORIG/ui/switch.py	2025-07-26 16:42:42.468323415 +0200
++++ ai_diffusion/ui/switch.py	2025-07-26 16:43:46.370306394 +0200
+@@ -11,7 +11,7 @@
+     def __init__(self, parent=None):
+         super().__init__(parent=parent)
+         self.setCheckable(True)
+-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
++        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+ 
+         self._thumb_radius = self.fontMetrics().height() // 2
+         self._track_radius = self._thumb_radius + 2
+@@ -69,7 +69,7 @@ class SwitchWidget(QAbstractButton):
+ 
+     def paintEvent(self, e):
+         p = QPainter(self)
+-        p.setRenderHint(QPainter.Antialiasing, True)
++        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+         p.setPen(Qt.PenStyle.NoPen)
+         track_opacity = self._track_opacity
+         thumb_opacity = 1.0
+diff -urN ai_diffusion.ORIG/ui/theme.py ai_diffusion/ui/theme.py
+--- ai_diffusion.ORIG/ui/theme.py	2025-07-26 16:42:42.467779568 +0200
++++ ai_diffusion/ui/theme.py	2025-07-26 16:43:46.369541761 +0200
+@@ -21,7 +21,7 @@
+ highlight = "#8df" if is_dark else "#357"
+ progress_alt = "#a16207" if is_dark else "#ca8a04"
+ active = _palette.color(QPalette.ColorRole.Highlight).name()
+-line = _palette.color(QPalette.ColorRole.Background).darker(120).name()
++line = _palette.color(QPalette.ColorRole.Window).darker(120).name()
+ line_base = _palette.color(QPalette.ColorRole.Base).darker(120).name()
+ 
+ flat_combo_stylesheet = f"""
+diff -urN ai_diffusion.ORIG/ui/widget.py ai_diffusion/ui/widget.py
+--- ai_diffusion.ORIG/ui/widget.py	2025-07-26 16:42:42.467153898 +0200
++++ ai_diffusion/ui/widget.py	2025-07-26 16:43:46.368509253 +0200
+@@ -1,8 +1,9 @@
+ from __future__ import annotations
+ from typing import Any, Callable, cast
+ 
++from PyQt6.QtGui import QAction
++
+ from PyQt6.QtWidgets import (
+-    QAction,
+     QSlider,
+     QWidget,
+     QPlainTextEdit,
+@@ -262,7 +263,7 @@
+ 
+     def sizeHint(self) -> QSize:
+         original = super().sizeHint()
+-        width = original.height() * 0.75 + self.fontMetrics().width(" 99 ") + 20
++        width = original.height() * 0.75 + self.fontMetrics().horizontalAdvance(" 99 ") + 20
+         return QSize(int(width), original.height())
+ 
+     def paintEvent(self, a0):
+@@ -709,7 +710,7 @@
+ 
+         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+         self.setMenu(menu)
+-        self.setPopupMode(QToolButton.InstantPopup)
++        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+         self.setToolTip(
+             _("Switch between workspaces: image generation, upscaling, live preview and animation.")
+         )
+@@ -759,7 +760,7 @@
+ 
+     def minimumSizeHint(self):
+         fm = self.fontMetrics()
+-        return QSize(fm.width(self._operation) + 40, 12 + int(1.3 * fm.height()))
++        return QSize(fm.horizontalAdvance(self._operation) + 40, 12 + int(1.3 * fm.height()))
+ 
+     def enterEvent(self, a0: QEvent | None):
+         if client := root.connection.client_if_connected:
+@@ -772,7 +773,7 @@
+     def paintEvent(self, a0: QPaintEvent | None) -> None:
+         opt = QStyleOption()
+         opt.initFrom(self)
+-        opt.state |= QStyle.StateFlag.State_Sunken if self.isDown() else 0
++        opt.state |= QStyle.StateFlag.State_Sunken if self.isDown() else QStyle.StateFlag.State_None
+         painter = QPainter(self)
+         fm = self.fontMetrics()
+         style = ensure(self.style())
+@@ -783,9 +784,9 @@
+         )
+         rect = self.rect()
+         pixmap = self.icon().pixmap(int(fm.height() * 1.3))
+-        is_hover = int(opt.state) & QStyle.StateFlag.State_MouseOver
++        is_hover = opt.state & QStyle.StateFlag.State_MouseOver
+         element = QStyle.PrimitiveElement.PE_PanelButtonCommand
+-        content_width = fm.width(self._operation) + 5 + pixmap.width()
++        content_width = fm.horizontalAdvance(self._operation) + 5 + pixmap.width()
+         content_rect = rect.adjusted(int(0.5 * (rect.width() - content_width)), 0, 0, 0)
+         style.drawPrimitive(element, opt, painter, self)
+         style.drawItemPixmap(painter, content_rect, align, pixmap)
+@@ -969,7 +970,7 @@
+     rect = widget.rect()
+     pixmap = widget.icon().pixmap(int(rect.height() * 0.75))
+     element = QStyle.PrimitiveElement.PE_Widget
+-    if int(opt.state) & QStyle.StateFlag.State_MouseOver:
++    if opt.state & QStyle.StateFlag.State_MouseOver:
+         element = QStyle.PrimitiveElement.PE_PanelButtonCommand
+     style.drawPrimitive(element, opt, painter, widget)
+     style.drawItemPixmap(painter, rect.adjusted(4, 0, 0, 0), align, pixmap)
+diff -urN ai_diffusion.ORIG/util.py ai_diffusion/util.py
+--- ai_diffusion.ORIG/util.py	2025-07-26 16:42:42.469204878 +0200
++++ ai_diffusion/util.py	2025-07-26 16:43:46.371817776 +0200
+@@ -35,11 +35,11 @@
+         dir.mkdir(exist_ok=True)
+         return dir
+     try:
+-        dir = Path(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
++        dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
+         if dir.exists() and "krita" in dir.name.lower():
+             dir = dir / "ai_diffusion"
+         else:
+-            dir = Path(QStandardPaths.writableLocation(QStandardPaths.GenericDataLocation))
++            dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.GenericDataLocation))
+             dir = dir / "krita-ai-diffusion"
+         dir.mkdir(exist_ok=True)
+         return dir
+diff -up ai_diffusion/image.py.omv~ ai_diffusion/image.py
+--- ai_diffusion/image.py.omv~	2025-07-26 17:36:07.992318768 +0200
++++ ai_diffusion/image.py	2025-07-26 17:36:16.253989436 +0200
+@@ -484,7 +484,7 @@ class Image:
+             return buffer
+         else:
+             ptr = ensure(self._qimage.constBits(), "Accessing data of invalid image")
+-            return QByteArray(ptr.asstring(self._qimage.byteCount()))
++            return QByteArray(ptr.asstring(self._qimage.sizeInBytes()))
+ 
+     @property
+     def size(self):  # in bytes
+@@ -488,7 +488,7 @@ class Image:
+ 
+     @property
+     def size(self):  # in bytes
+-        return self._qimage.byteCount()
++        return self._qimage.sizeInBytes()
+ 
+     def to_array(self):
+         import numpy as np

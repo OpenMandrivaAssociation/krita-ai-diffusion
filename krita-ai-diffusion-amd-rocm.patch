@@ -1,32 +1,23 @@
 diff -up ai_diffusion/server.py.1~ ai_diffusion/server.py
---- ai_diffusion/server.py.1~	2025-02-10 15:35:19.079144152 +0100
-+++ ai_diffusion/server.py	2025-02-10 15:43:31.696371281 +0100
-@@ -204,11 +204,16 @@ class Server:
-         await _extract_archive("ComfyUI", archive_path, comfy_dir.parent, cb)
-         temp_comfy_dir = comfy_dir.parent / f"ComfyUI-{resources.comfy_version}"
- 
--        torch_args = ["torch~=2.5.1", "torchvision~=0.20.1", "torchaudio~=2.5.1"]
-+        if self.backend is ServerBackend.rocm:
-+            torch_args = ["torch~=2.5.1+rocm6.2", "torchvision~=0.20.1+rocm6.2", "torchaudio~=2.5.1+rocm6.2"]
-+        else:
-+            torch_args = ["torch~=2.5.1", "torchvision~=0.20.1", "torchaudio~=2.5.1"]
-         if self.backend is ServerBackend.cpu:
+--- ai_diffusion/server.py.1~	2025-07-27 20:49:00.211077215 +0200
++++ ai_diffusion/server.py	2025-07-27 21:11:38.501603444 +0200
+@@ -241,6 +241,8 @@ class Server:
              torch_args += ["--index-url", "https://download.pytorch.org/whl/cpu"]
          elif self.backend is ServerBackend.cuda:
-             torch_args += ["--index-url", "https://download.pytorch.org/whl/cu124"]
+             torch_args += ["--index-url", "https://download.pytorch.org/whl/cu128"]
 +        elif self.backend is ServerBackend.rocm:
-+            torch_args += ["--index-url", "https://download.pytorch.org/whl/rocm6.2"]
++            torch_args += ["--index-url", "https://download.pytorch.org/whl/rocm6.4"]
          elif self.backend is ServerBackend.directml:
-             torch_args = ["numpy<2", "torch-directml"]
-         await _execute_process("PyTorch", self._pip_install(*torch_args), self.path, cb)
+             torch_args = ["numpy<2", "torch-directml", "torchvision", "torchaudio"]
+         elif self.backend is ServerBackend.xpu:
 diff -up ai_diffusion/settings.py.1~ ai_diffusion/settings.py
---- ai_diffusion/settings.py.1~	2025-01-31 12:35:04.000000000 +0100
-+++ ai_diffusion/settings.py	2025-02-10 15:35:19.079256595 +0100
+--- ai_diffusion/settings.py.1~	2025-07-27 20:49:00.231701088 +0200
++++ ai_diffusion/settings.py	2025-07-27 21:12:44.137643835 +0200
 @@ -22,6 +22,7 @@ class ServerMode(Enum):
  class ServerBackend(Enum):
      cpu = (_("Run on CPU"), True)
      cuda = (_("Use CUDA (NVIDIA GPU)"), not is_macos)
-+    rocm = ("Use ROCm (AMD GPU)", not is_macos and not is_windows)
++    rocm = (_("Use ROCm (AMD GPU)"), not is_macos and not is_windows)
      mps = (_("Use MPS (Metal Performance Shader)"), is_macos)
      directml = (_("Use DirectML (GPU)"), is_windows)
- 
+     xpu = (_("Use XPU (Intel GPU)"), not is_macos)

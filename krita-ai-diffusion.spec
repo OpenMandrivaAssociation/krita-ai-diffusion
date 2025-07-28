@@ -7,6 +7,7 @@ URL:		https://github.com/Acly/krita-ai-diffusion
 License:	GPL
 Group:		Graphics
 BuildArch:	noarch
+BuildRequires:	dos2unix
 Requires:	krita >= 6.0.0-0
 Supplements:	krita >= 6.0.0-0
 Requires:	python-qt6-network

@@ -1,5 +1,5 @@
 Name:		krita-ai-diffusion
-Version:	1.36.1
+Version:	1.48.0
 Release:	1
 Source0:	https://github.com/Acly/krita-ai-diffusion/releases/download/v1.36.0/krita_ai_diffusion-%{version}.zip
 Summary:	AI image generation plugin for Krita
